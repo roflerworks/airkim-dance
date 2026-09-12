@@ -43,45 +43,6 @@ dialog.addEventListener('click', event => {
 dialog.addEventListener('close', () => { document.body.style.overflow = ''; });
 document.querySelector('#year').textContent = String(new Date().getFullYear());
 
-// Background film: respect motion preferences and avoid playing off screen.
-const heroVideo = document.querySelector('#hero-video');
-const videoToggle = document.querySelector('.video-toggle');
-const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
-let videoUserPaused = false;
-let heroVisible = true;
-function updateVideoButton() {
-  const paused = heroVideo.paused;
-  videoToggle.setAttribute('aria-label', paused ? 'Включить фоновое видео' : 'Поставить фоновое видео на паузу');
-  videoToggle.querySelector('span').textContent = paused ? '▶' : 'Ⅱ';
-  videoToggle.querySelector('.video-toggle-label').textContent = paused ? 'Смотреть' : 'Пауза';
-}
-function syncVideo() {
-  if (reducedMotion.matches || videoUserPaused || !heroVisible || document.hidden) {
-    heroVideo.pause();
-    return;
-  }
-  if (!heroVideo.getAttribute('src')) heroVideo.src = heroVideo.dataset.src;
-  heroVideo.play().catch(updateVideoButton);
-}
-heroVideo.muted = true;
-heroVideo.addEventListener('canplay', () => { videoToggle.hidden = false; updateVideoButton(); });
-heroVideo.addEventListener('play', updateVideoButton);
-heroVideo.addEventListener('pause', updateVideoButton);
-heroVideo.addEventListener('error', () => { videoToggle.hidden = true; });
-videoToggle.addEventListener('click', () => {
-  videoUserPaused = !heroVideo.paused;
-  syncVideo();
-});
-reducedMotion.addEventListener('change', syncVideo);
-document.addEventListener('visibilitychange', syncVideo);
-if ('IntersectionObserver' in window) {
-  new IntersectionObserver(entries => {
-    heroVisible = entries[0].isIntersecting;
-    syncVideo();
-  }, {threshold: 0.05}).observe(document.querySelector('.hero'));
-}
-syncVideo();
-
 // Supplied studio photographs, with keyboard-accessible full-size viewing.
 const galleryLinks = [...document.querySelectorAll('[data-gallery]')];
 const galleryDialog = document.querySelector('.gallery-dialog');
