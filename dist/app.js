@@ -42,3 +42,75 @@ dialog.addEventListener('click', event => {
 });
 dialog.addEventListener('close', () => { document.body.style.overflow = ''; });
 document.querySelector('#year').textContent = String(new Date().getFullYear());
+
+// Background film: respect motion preferences and avoid playing off screen.
+const heroVideo = document.querySelector('#hero-video');
+const videoToggle = document.querySelector('.video-toggle');
+const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
+let videoUserPaused = false;
+let heroVisible = true;
+function updateVideoButton() {
+  const paused = heroVideo.paused;
+  videoToggle.setAttribute('aria-label', paused ? 'Включить фоновое видео' : 'Поставить фоновое видео на паузу');
+  videoToggle.querySelector('span').textContent = paused ? '▶' : 'Ⅱ';
+  videoToggle.querySelector('.video-toggle-label').textContent = paused ? 'Смотреть' : 'Пауза';
+}
+function syncVideo() {
+  if (reducedMotion.matches || videoUserPaused || !heroVisible || document.hidden) {
+    heroVideo.pause();
+    return;
+  }
+  if (!heroVideo.getAttribute('src')) heroVideo.src = heroVideo.dataset.src;
+  heroVideo.play().catch(updateVideoButton);
+}
+heroVideo.muted = true;
+heroVideo.addEventListener('canplay', () => { videoToggle.hidden = false; updateVideoButton(); });
+heroVideo.addEventListener('play', updateVideoButton);
+heroVideo.addEventListener('pause', updateVideoButton);
+heroVideo.addEventListener('error', () => { videoToggle.hidden = true; });
+videoToggle.addEventListener('click', () => {
+  videoUserPaused = !heroVideo.paused;
+  syncVideo();
+});
+reducedMotion.addEventListener('change', syncVideo);
+document.addEventListener('visibilitychange', syncVideo);
+if ('IntersectionObserver' in window) {
+  new IntersectionObserver(entries => {
+    heroVisible = entries[0].isIntersecting;
+    syncVideo();
+  }, {threshold: 0.05}).observe(document.querySelector('.hero'));
+}
+syncVideo();
+
+// Supplied studio photographs, with keyboard-accessible full-size viewing.
+const galleryLinks = [...document.querySelectorAll('[data-gallery]')];
+const galleryDialog = document.querySelector('.gallery-dialog');
+const galleryImage = document.querySelector('#gallery-image');
+let galleryIndex = 0;
+function showGalleryImage(index) {
+  galleryIndex = (index + galleryLinks.length) % galleryLinks.length;
+  const link = galleryLinks[galleryIndex];
+  galleryImage.src = link.href;
+  galleryImage.alt = link.querySelector('img').alt;
+  document.querySelector('#gallery-caption').textContent = link.dataset.caption;
+  document.querySelector('#gallery-count').textContent = `${galleryIndex + 1} / ${galleryLinks.length}`;
+}
+galleryLinks.forEach((link,index) => link.addEventListener('click', event => {
+  if (typeof galleryDialog.showModal !== 'function') return;
+  event.preventDefault();
+  showGalleryImage(index);
+  galleryDialog.showModal();
+  document.body.style.overflow = 'hidden';
+}));
+document.querySelector('.gallery-close').addEventListener('click', () => galleryDialog.close());
+document.querySelector('.gallery-prev').addEventListener('click', () => showGalleryImage(galleryIndex - 1));
+document.querySelector('.gallery-next').addEventListener('click', () => showGalleryImage(galleryIndex + 1));
+galleryDialog.addEventListener('keydown', event => {
+  if (event.key === 'ArrowRight') {event.preventDefault();showGalleryImage(galleryIndex + 1);}
+  if (event.key === 'ArrowLeft') {event.preventDefault();showGalleryImage(galleryIndex - 1);}
+});
+galleryDialog.addEventListener('click', event => {
+  const box = galleryDialog.getBoundingClientRect();
+  if (event.target === galleryDialog && (event.clientX < box.left || event.clientX > box.right || event.clientY < box.top || event.clientY > box.bottom)) galleryDialog.close();
+});
+galleryDialog.addEventListener('close', () => {document.body.style.overflow = '';});
